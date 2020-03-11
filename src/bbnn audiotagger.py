@@ -164,7 +164,7 @@ def build_and_train_bbnn_model_from_filelist(audio_files, genre_list_fileout):
 	model.compile(loss='sparse_categorical_crossentropy', optimizer=Adam(lr=lr), metrics=['accuracy'])
 
 	features, labels = generate_dataset(training_dataset, genres)
-	model.fit(features, labels, batch_size=4, epochs=1000, verbose=1, validation_split=0.20, shuffle=True, callbacks=[lr_decay, save_best])
+	model.fit(features, labels, batch_size=4, epochs=1000, verbose=1, validation_split=0.20, callbacks=[lr_decay, save_best])
 
 	features, labels = generate_dataset(training_dataset, genres)
 	predictions = model.predict(features)
