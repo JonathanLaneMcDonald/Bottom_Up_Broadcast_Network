@@ -162,7 +162,10 @@ def build_and_train_bbnn_model_from_filelist(audio_files, genre_list_fileout):
 
 		if loss < best_loss:
 			best_loss = loss
+			print ('epoch:',e,'loss improved to', best_loss, '-- saving model')
 			model.save('bbnn-'+str(loss)+'-'+str(accuracy)+'.h5')
+		else:
+			print ('epoch:',e,'no loss improvement from', best_loss)
 
 	features, labels = generate_dataset(training_dataset, genres)
 	predictions = model.predict(features)
