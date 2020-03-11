@@ -112,14 +112,14 @@ def generate_dataset(audio_files, genres):
 		data, sr = librosa.load(audio_files[samples[s]])
 		#print (s,samples[s],data.shape)
 		features[s] = np.log10(np.add(features[s],librosa.feature.melspectrogram(data,hop_length=1024).transpose()[:645].reshape(645,128,1))+1)
-		labels[s][0] = genres.index(audio_files[samples[s]].split('/')[1])
+		labels[s][0] = genres.index(audio_files[samples[s]].split('/')[-2])
 
 	return features, labels
 
 def split_dataset(dataset, validation_split):
 	classes = dict()
 	for name in dataset:
-		this_class = name.split('/')[1]
+		this_class = name.split('/')[-2]
 		if this_class in classes:
 			classes[this_class] += [name]
 		else:
@@ -164,7 +164,7 @@ def build_and_train_bbnn_model_from_filelist(audio_files, genre_list_fileout):
 	model.compile(loss='sparse_categorical_crossentropy', optimizer=Adam(lr=lr), metrics=['accuracy'])
 
 	features, labels = generate_dataset(training_dataset, genres)
-	model.fit(features, labels, batch_size=8, epochs=1000, verbose=1, validation_split=0.20, callbacks=[lr_decay, save_best])
+	model.fit(features, labels, batch_size=4, epochs=1000, verbose=1, validation_split=0.20, callbacks=[lr_decay, save_best])
 
 	features, labels = generate_dataset(training_dataset, genres)
 	predictions = model.predict(features)
