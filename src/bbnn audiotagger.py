@@ -155,9 +155,9 @@ def build_and_train_bbnn_model_from_filelist(audio_files, genre_list_fileout):
 			print ('learning rate changed to:',lr)
 			model.compile(loss='sparse_categorical_crossentropy', optimizer=Adam(lr=lr), metrics=['accuracy'])
 
-		noise = np.random.uniform(size=training_features.shape)
+		noise = np.random.uniform(0, 0.1, size=training_features.shape)
 		noisy_features = np.add(training_features, noise)
-		model.fit(noisy_features, training_labels, batch_size=4, epochs=1, verbose=1)
+		model.fit(noisy_features, training_labels, batch_size=4, epochs=1, verbose=1, validation_data=(validation_features, validation_labels))
 		loss, accuracy = model.evaluate(validation_features, validation_labels, batch_size=4, verbose=1)
 
 		if loss < best_loss:
