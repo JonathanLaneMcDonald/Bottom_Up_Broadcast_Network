@@ -92,17 +92,6 @@ def build_bbnn(input_shape, num_classes):
 	model = Model(inputs=input, outputs=output)
 	return model
 
-def prep_anonymous_dataset(audio_files):
-
-	features = np.zeros((len(audio_files), 645, 128, 1),dtype=np.float16)
-
-	for s in range(len(audio_files)):
-		data, sr = librosa.load(audio_files[s])
-		#print (s,audio_files[s],data.shape)
-		features[s] = np.add(features[s],librosa.feature.melspectrogram(data,hop_length=1024).transpose()[:645].reshape(645,128,1))
-
-	return features
-
 def generate_dataset(audio_files, genres):
 	samples = list(np.random.permutation(list(range(len(audio_files)))))
 
