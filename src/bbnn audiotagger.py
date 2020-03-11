@@ -146,8 +146,8 @@ def build_and_train_bbnn_model_from_filelist(audio_files, genre_list_fileout):
 	# keras.callbacks.callbacks.ReduceLROnPlateau(monitor='val_loss', factor=0.1, patience=10, verbose=0, mode='auto', min_delta=0.0001, cooldown=0, min_lr=0)
 	# keras.callbacks.callbacks.ModelCheckpoint(filepath, monitor='val_loss', verbose=0, save_best_only=False, save_weights_only=False, mode='auto', period=1)
 
-	lr_decay = ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=3, min_lr=0.0001)
-	save_best = ModelCheckpoint('best bbnn model', monitor='val_loss', verbose=1, save_best_only=True)
+	lr_decay = ReduceLROnPlateau(verbose=1)
+	save_best = ModelCheckpoint('best bbnn model', verbose=1, save_best_only=True)
 
 	lr=0.001
 	print ('learning rate:',lr)
