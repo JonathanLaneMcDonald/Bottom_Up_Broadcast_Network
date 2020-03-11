@@ -5,7 +5,7 @@ import numpy as np
 
 from sys import argv
 
-from keras.models import Model
+from keras.models import Model, load_model
 from keras.layers import Input, Dense
 from keras.layers import Convolution2D, MaxPooling2D, GlobalAveragePooling2D
 from keras.layers import BatchNormalization, Activation, Concatenate
@@ -179,6 +179,8 @@ command = argv[1]
 if command == 'train':
 	build_and_train_bbnn_model_from_filelist([x for x in open('audiofiles.txt','r').read().split('\n') if len(x)], 'genrelist.txt')
 elif command == 'classify':
-	pass
+	model = load_model('best bbnn model')
+	model.summary()
+	# and then do nothing ;)
 else:
 	print ('Usage: bbnn\ audiotagger.py [train/classify]')
