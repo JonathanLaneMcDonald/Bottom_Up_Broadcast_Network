@@ -100,7 +100,6 @@ def generate_dataset(audio_files, genres):
 
 	for s in range(len(samples)):
 		data, sr = librosa.load(audio_files[samples[s]])
-		#print (s,samples[s],data.shape)
 		features[s] = np.log10(np.add(features[s],librosa.feature.melspectrogram(data,hop_length=1024).transpose()[:645].reshape(645,128,1))+1)
 		labels[s][0] = genres.index(audio_files[samples[s]].split('/')[-2])
 
@@ -132,7 +131,7 @@ def split_dataset(dataset, validation_split):
 def build_and_train_bbnn_model_from_filelist(audio_files, genre_list_fileout):
 	print (len(audio_files),'audio files found')
 
-	genres, training_dataset, validation_dataset = split_dataset(audio_files, 0)
+	genres, training_dataset, validation_dataset = split_dataset(audio_files, 0.20)
 	print (len(genres),'genres identified:',genres)
 	print (len(training_dataset),'items in training set')
 	print (len(validation_dataset),'items in validation set')
@@ -143,18 +142,27 @@ def build_and_train_bbnn_model_from_filelist(audio_files, genre_list_fileout):
 	model = build_bbnn((645,128,1),10)
 	model.summary()
 
-	# keras.callbacks.callbacks.ReduceLROnPlateau(monitor='val_loss', factor=0.1, patience=10, verbose=0, mode='auto', min_delta=0.0001, cooldown=0, min_lr=0)
-	# keras.callbacks.callbacks.ModelCheckpoint(filepath, monitor='val_loss', verbose=0, save_best_only=False, save_weights_only=False, mode='auto', period=1)
-
-	lr_decay = ReduceLROnPlateau(verbose=1)
-	save_best = ModelCheckpoint('best bbnn model', verbose=1, save_best_only=True)
-
 	lr=0.001
 	print ('learning rate:',lr)
 	model.compile(loss='sparse_categorical_crossentropy', optimizer=Adam(lr=lr), metrics=['accuracy'])
 
-	features, labels = generate_dataset(training_dataset, genres)
-	model.fit(features, labels, batch_size=4, epochs=1000, verbose=1, validation_split=0.20, callbacks=[lr_decay, save_best])
+	best_loss = 2**20
+	training_features, training_labels = generate_dataset(training_dataset, genres)
+	validation_features, validation_labels = generate_dataset(validation_dataset, genres)
+	for e in range(1, 1000):
+		if e % 100 == 0:
+			lr/=3
+			print ('learning rate changed to:',lr)
+			model.compile(loss='sparse_categorical_crossentropy', optimizer=Adam(lr=lr), metrics=['accuracy'])
+
+		noise = np.random.uniform(size=training_features.shape)
+		noisy_features = np.add(training_features, noise)
+		model.fit(noisy_features, training_labels, batch_size=4, epochs=1, verbose=1)
+		loss, accuracy = model.evaluate(validation_features, validation_labels, batch_size=4, verbose=1)
+
+		if loss < best_loss:
+			best_loss = loss
+			model.save('bbnn-'+str(loss)+'-'+str(accuracy)+'.h5')
 
 	features, labels = generate_dataset(training_dataset, genres)
 	predictions = model.predict(features)
