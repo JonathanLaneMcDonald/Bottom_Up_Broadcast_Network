@@ -1,4 +1,5 @@
 
+import os
 import keras
 import librosa
 import numpy as np
@@ -175,12 +176,37 @@ def build_and_train_bbnn_model_from_filelist(audio_files, genre_list_fileout):
 	for r in range(len(cm)):
 		print ('\t'.join([str(int(x)) for x in cm[r]]))
 
+class STP_Classifier:
+	def __init__(self, modelPath, genreListPath):
+		assert os.path.exists(modelPath)
+		self.model = load_model(modelPath)
+		self.model.summary()
+
+		assert os.path.exists(genreListPath)
+		self.genre = [x for x in open(genreListPath,'r').read().split('\n') if len(x)]
+		print ('loaded genres:',self.genre)
+
+	def classify(self, audioPath):
+		assert os.path.exists(audioPath)
+		features = np.zeros((1, 645, 128, 1),dtype=np.float16)
+
+		data, sr = librosa.load(audioPath)
+		features[0] = np.log10(np.add(features[0],librosa.feature.melspectrogram(data,hop_length=1024).transpose()[:645].reshape(645,128,1))+1)
+		prediction = self.model.predict(features)[0]
+
+		return list(zip(prediction, self.genre))
+
 command = argv[1]
 if command == 'train':
 	build_and_train_bbnn_model_from_filelist([x for x in open('audiofiles.txt','r').read().split('\n') if len(x)], 'genrelist.txt')
 elif command == 'classify':
-	model = load_model('best bbnn model')
-	model.summary()
-	# and then do nothing ;)
+	classifier = STP_Classifier('best bbnn model', 'genrelist.txt')
+
+	audiofiles = np.random.permutation([x for x in open('audiofiles.txt','r').read().split('\n') if len(x)])
+
+	for file in audiofiles[:10]:
+		prediction = classifier.classify(file)
+		print (file, prediction)
+
 else:
 	print ('Usage: bbnn\ audiotagger.py [train/classify]')
