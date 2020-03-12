@@ -1,5 +1,6 @@
 
 import os
+import time
 import keras
 import librosa
 import numpy as np
@@ -209,13 +210,15 @@ command = argv[1]
 if command == 'train':
 	build_and_train_bbnn_model_from_filelist([x for x in open('audiofiles.txt','r').read().split('\n') if len(x)], 'genrelist.txt')
 elif command == 'classify':
-	classifier = STP_Classifier('best bbnn model', 'genrelist.txt')
+	start = time.time()
+	classifier = STP_Classifier('bbnn-0.41823064860422166-0.885.h5', 'genrelist.txt')
 
 	audiofiles = np.random.permutation([x for x in open('audiofiles.txt','r').read().split('\n') if len(x)])
 
-	for file in audiofiles[:10]:
+	for file in audiofiles[:100]:
 		prediction = classifier.classify(file)
-		print (file, prediction)
+		print (file, list(reversed(sorted(prediction)))[0][1])
+	print ('test time (loading model, preprocessing, and classification):', time.time()-start, 'seconds')
 
 else:
 	print ('Usage: bbnn\ audiotagger.py [train/classify]')
