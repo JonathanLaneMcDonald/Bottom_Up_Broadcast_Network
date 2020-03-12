@@ -205,7 +205,7 @@ class STP_Classifier:
 		prediction = self.model.predict(features)[0]
 
 		return list(zip(prediction, self.genre))
-
+'''
 command = argv[1]
 if command == 'train':
 	build_and_train_bbnn_model_from_filelist([x for x in open('audiofiles.txt','r').read().split('\n') if len(x)], 'genrelist.txt')
@@ -222,3 +222,4 @@ elif command == 'classify':
 
 else:
 	print ('Usage: bbnn\ audiotagger.py [train/classify]')
+'''
