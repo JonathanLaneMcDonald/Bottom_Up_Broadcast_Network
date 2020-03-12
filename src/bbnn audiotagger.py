@@ -146,25 +146,34 @@ def build_and_train_bbnn_model_from_filelist(audio_files, genre_list_fileout):
 	print ('learning rate:',lr)
 	model.compile(loss='sparse_categorical_crossentropy', optimizer=Adam(lr=lr), metrics=['accuracy'])
 
+	noise_mu = 0
+	noise_sigma = 0.1
+	min_lr = 0.000005
+	lrd = 0.5
+	patience = 10
+	staleness = 0
 	best_loss = 2**20
 	training_features, training_labels = generate_dataset(training_dataset, genres)
 	validation_features, validation_labels = generate_dataset(validation_dataset, genres)
 	for e in range(1, 1000):
-		if e % 100 == 0:
-			lr/=3
+		if patience <= staleness:
+			lr = max(min_lr, lr*lrd)
 			print ('learning rate changed to:',lr)
 			model.compile(loss='sparse_categorical_crossentropy', optimizer=Adam(lr=lr), metrics=['accuracy'])
+			staleness = 0
 
-		noise = np.random.uniform(0, 0.1, size=training_features.shape)
+		noise = np.clip(np.random.normal(noise_mu, noise_sigma, size=training_features.shape), 0, 10)
 		noisy_features = np.add(training_features, noise)
 		model.fit(noisy_features, training_labels, batch_size=4, epochs=1, verbose=1, validation_data=(validation_features, validation_labels))
 		loss, accuracy = model.evaluate(validation_features, validation_labels, batch_size=4, verbose=1)
 
 		if loss < best_loss:
+			staleness = 0
 			best_loss = loss
 			print ('epoch:',e,'loss improved to', best_loss, '-- saving model')
 			model.save('bbnn-'+str(loss)+'-'+str(accuracy)+'.h5')
 		else:
+			staleness += 1
 			print ('epoch:',e,'no loss improvement from', best_loss)
 
 	features, labels = generate_dataset(training_dataset, genres)
