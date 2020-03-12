@@ -147,7 +147,7 @@ def build_and_train_bbnn_model_from_filelist(audio_files, genre_list_fileout):
 	model.compile(loss='sparse_categorical_crossentropy', optimizer=Adam(lr=lr), metrics=['accuracy'])
 
 	noise_mu = 0
-	noise_sigma = 0.1
+	noise_sigma = 0.0
 	min_lr = 0.000005
 	lrd = 0.5
 	patience = 10
