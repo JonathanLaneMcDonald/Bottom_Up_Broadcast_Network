@@ -223,7 +223,7 @@ if command == 'train':
 	build_and_train_bbnn_model_from_filelist([x for x in open('audiofiles.txt', 'r').read().split('\n') if len(x)], 'genrelist.txt')
 elif command == 'classify':
 	start = time.time()
-	classifier = STP_Classifier('bbnn-0.41823064860422166-0.885.h5', 'genrelist.txt')
+	classifier = STP_Classifier('bbnn model.h5', 'genrelist.txt')
 
 	audiofiles = np.random.permutation([x for x in open('audiofiles.txt', 'r').read().split('\n') if len(x)])
 
