@@ -1,23 +1,22 @@
 
 import os
 import time
-import keras
 import librosa
 import numpy as np
 
 from sys import argv
 
-from keras.models import Model, load_model
+from keras.models import Model, load_model, save_model
 from keras.layers import Input, Dense
 from keras.layers import Convolution2D, MaxPooling2D, GlobalAveragePooling2D
 from keras.layers import BatchNormalization, Activation, Concatenate
 from keras.optimizers import Adam
 
-from keras.callbacks import ReduceLROnPlateau, ModelCheckpoint
+from keras.utils import plot_model
 
 from numpy.random import random as npr
 
-# implementation of the model from 
+# Implementation of the model from
 # Bottom-up Broadcast Neural Network For Music Genre Classification
 # https://arxiv.org/abs/1901.08928
 # 
@@ -27,13 +26,15 @@ from numpy.random import random as npr
 USING_BATCH_NORMALIZATION = True
 FILTERS = 32
 
+
 def add_bbnn_first_stage(x):
-	x = Convolution2D(FILTERS, (3,3), padding='same')(x)
+	x = Convolution2D(FILTERS, (3, 3), padding='same')(x)
 	if USING_BATCH_NORMALIZATION:
 		x = BatchNormalization()(x)
 	x = Activation('relu')(x)
-	x = MaxPooling2D((4,1))(x)
+	x = MaxPooling2D((4, 1))(x)
 	return x
+
 
 def add_bn_conv(x, kernel):
 	if USING_BATCH_NORMALIZATION:
@@ -41,28 +42,32 @@ def add_bn_conv(x, kernel):
 	x = Convolution2D(FILTERS, kernel, padding='same', activation='relu')(x)
 	return x
 
+
 def add_inception_block(x):
-	incept_top_1_conv_1x1 = add_bn_conv(x, (1,1))
-	incept_top_2_conv_1x1 = add_bn_conv(x, (1,1))
-	incept_top_3_conv_1x1 = add_bn_conv(x, (1,1))
-	incept_top_4_pool_3x3 = MaxPooling2D((3,3),strides=(1,1),padding='same')(x)
+	incept_top_1_conv_1x1 = add_bn_conv(x, (1, 1))
+	incept_top_2_conv_1x1 = add_bn_conv(x, (1, 1))
+	incept_top_3_conv_1x1 = add_bn_conv(x, (1, 1))
+	incept_top_4_pool_3x3 = MaxPooling2D((3, 3), strides=(1, 1), padding='same')(x)
 	
 	incept_bot_1_conv_1x1 = incept_top_1_conv_1x1
-	incept_bot_2_conv_3x3 = add_bn_conv(incept_top_2_conv_1x1, (3,3))
-	incept_bot_3_conv_5x5 = add_bn_conv(incept_top_3_conv_1x1, (5,5))
-	incept_bot_4_conv_1x1 = add_bn_conv(incept_top_4_pool_3x3, (1,1))
+	incept_bot_2_conv_3x3 = add_bn_conv(incept_top_2_conv_1x1, (3, 3))
+	incept_bot_3_conv_5x5 = add_bn_conv(incept_top_3_conv_1x1, (5, 5))
+	incept_bot_4_conv_1x1 = add_bn_conv(incept_top_4_pool_3x3, (1, 1))
 
-	concat = Concatenate()([	incept_bot_1_conv_1x1,
-								incept_bot_2_conv_3x3,
-								incept_bot_3_conv_5x5,
-								incept_bot_4_conv_1x1	])
+	concat = Concatenate()([
+		incept_bot_1_conv_1x1,
+		incept_bot_2_conv_3x3,
+		incept_bot_3_conv_5x5,
+		incept_bot_4_conv_1x1	])
 
 	return concat
 
+
 def add_bbnn_transition_stage(x):
-	x = add_bn_conv(x, (1,1))
-	x = MaxPooling2D((2,2))(x)
+	x = add_bn_conv(x, (1, 1))
+	x = MaxPooling2D((2, 2))(x)
 	return x
+
 
 def add_bbnn_closing_stage(x, num_classes):
 	if USING_BATCH_NORMALIZATION:
@@ -71,10 +76,11 @@ def add_bbnn_closing_stage(x, num_classes):
 	x = Dense(num_classes, activation='softmax')(x)
 	return x
 
+
 def build_bbnn(input_shape, num_classes):
 
-	input = Input(shape=input_shape)
-	dense_connections = [add_bbnn_first_stage(input)]
+	inputs = Input(shape=input_shape)
+	dense_connections = [add_bbnn_first_stage(inputs)]
 
 	for broadcast_module in range(3):
 		x = None
@@ -89,22 +95,24 @@ def build_bbnn(input_shape, num_classes):
 	x = add_bbnn_transition_stage(x)
 	x = add_bbnn_closing_stage(x, num_classes)
 	
-	output = x
-	model = Model(inputs=input, outputs=output)
+	outputs = x
+	model = Model(inputs=inputs, outputs=outputs)
 	return model
+
 
 def generate_dataset(audio_files, genres):
 	samples = list(np.random.permutation(list(range(len(audio_files)))))
 
-	features = np.zeros((len(samples), 645, 128, 1),dtype=np.float16)
-	labels = np.zeros((len(samples),1),dtype=np.int)
+	features = np.zeros((len(samples), 645, 128, 1), dtype=np.float16)
+	labels = np.zeros((len(samples), 1), dtype=np.int)
 
 	for s in range(len(samples)):
 		data, sr = librosa.load(audio_files[samples[s]])
-		features[s] = np.log10(np.add(features[s],librosa.feature.melspectrogram(data,hop_length=1024).transpose()[:645].reshape(645,128,1))+1)
+		features[s] = np.log10(np.add(features[s], librosa.feature.melspectrogram(data, hop_length=1024).transpose()[:645].reshape(645, 128, 1))+1)
 		labels[s][0] = genres.index(audio_files[samples[s]].split('/')[-2])
 
 	return features, labels
+
 
 def split_dataset(dataset, validation_split):
 	classes = dict()
@@ -129,22 +137,24 @@ def split_dataset(dataset, validation_split):
 	
 	return class_list, training_dataset, validation_dataset
 
+
 def build_and_train_bbnn_model_from_filelist(audio_files, genre_list_fileout):
-	print (len(audio_files),'audio files found')
+	print(len(audio_files), 'audio files found')
 
 	genres, training_dataset, validation_dataset = split_dataset(audio_files, 0.20)
-	print (len(genres),'genres identified:',genres)
-	print (len(training_dataset),'items in training set')
-	print (len(validation_dataset),'items in validation set')
+	print(len(genres), 'genres identified:', genres)
+	print(len(training_dataset), 'items in training set')
+	print(len(validation_dataset), 'items in validation set')
 
 	# write the genre list to the supplied file
-	open(genre_list_fileout,'w').write('\n'.join(genres))
+	open(genre_list_fileout, 'w').write('\n'.join(genres))
 
-	model = build_bbnn((645,128,1),10)
+	model = build_bbnn((645, 128, 1), 10)
+	plot_model(model, to_file='bbnn_model.png', show_shapes=True)
 	model.summary()
 
-	lr=0.001
-	print ('learning rate:',lr)
+	lr = 0.001
+	print('learning rate:', lr)
 	model.compile(loss='sparse_categorical_crossentropy', optimizer=Adam(lr=lr), metrics=['accuracy'])
 
 	noise_mu = 0
@@ -159,7 +169,7 @@ def build_and_train_bbnn_model_from_filelist(audio_files, genre_list_fileout):
 	for e in range(1, 1000):
 		if patience <= staleness:
 			lr = max(min_lr, lr*lrd)
-			print ('learning rate changed to:',lr)
+			print('learning rate changed to:', lr)
 			model.compile(loss='sparse_categorical_crossentropy', optimizer=Adam(lr=lr), metrics=['accuracy'])
 			staleness = 0
 
@@ -171,11 +181,11 @@ def build_and_train_bbnn_model_from_filelist(audio_files, genre_list_fileout):
 		if loss < best_loss:
 			staleness = 0
 			best_loss = loss
-			print ('epoch:',e,'loss improved to', best_loss, '-- saving model')
-			model.save('bbnn-'+str(loss)+'-'+str(accuracy)+'.h5')
+			print('epoch:', e, 'loss improved to', best_loss, '-- saving model')
+			save_model(model, 'bbnn-'+str(loss)+'-'+str(accuracy), save_format='h5')
 		else:
 			staleness += 1
-			print ('epoch:',e,'no loss improvement from', best_loss)
+			print('epoch:', e, 'no loss improvement from', best_loss)
 
 	features, labels = generate_dataset(training_dataset, genres)
 	predictions = model.predict(features)
@@ -184,7 +194,8 @@ def build_and_train_bbnn_model_from_filelist(audio_files, genre_list_fileout):
 	for p in range(len(predictions)):
 		cm[labels[p][0]] = np.add(cm[labels[p][0]], predictions[p])
 	for r in range(len(cm)):
-		print ('\t'.join([str(int(x)) for x in cm[r]]))
+		print('\t'.join([str(int(x)) for x in cm[r]]))
+
 
 class STP_Classifier:
 	def __init__(self, modelPath, genreListPath):
@@ -193,33 +204,33 @@ class STP_Classifier:
 		self.model.summary()
 
 		assert os.path.exists(genreListPath)
-		self.genre = [x for x in open(genreListPath,'r').read().split('\n') if len(x)]
-		print ('loaded genres:',self.genre)
+		self.genre = [x for x in open(genreListPath, 'r').read().split('\n') if len(x)]
+		print('loaded genres:', self.genre)
 
 	def classify(self, audioPath):
 		assert os.path.exists(audioPath)
-		features = np.zeros((1, 645, 128, 1),dtype=np.float16)
+		features = np.zeros((1, 645, 128, 1), dtype=np.float16)
 
 		data, sr = librosa.load(audioPath)
-		features[0] = np.log10(np.add(features[0],librosa.feature.melspectrogram(data,hop_length=1024).transpose()[:645].reshape(645,128,1))+1)
+		features[0] = np.log10(np.add(features[0], librosa.feature.melspectrogram(data, hop_length=1024).transpose()[:645].reshape(645, 128, 1))+1)
 		prediction = self.model.predict(features)[0]
 
 		return list(zip(prediction, self.genre))
-'''
+
+
 command = argv[1]
 if command == 'train':
-	build_and_train_bbnn_model_from_filelist([x for x in open('audiofiles.txt','r').read().split('\n') if len(x)], 'genrelist.txt')
+	build_and_train_bbnn_model_from_filelist([x for x in open('audiofiles.txt', 'r').read().split('\n') if len(x)], 'genrelist.txt')
 elif command == 'classify':
 	start = time.time()
 	classifier = STP_Classifier('bbnn-0.41823064860422166-0.885.h5', 'genrelist.txt')
 
-	audiofiles = np.random.permutation([x for x in open('audiofiles.txt','r').read().split('\n') if len(x)])
+	audiofiles = np.random.permutation([x for x in open('audiofiles.txt', 'r').read().split('\n') if len(x)])
 
 	for file in audiofiles[:100]:
 		prediction = classifier.classify(file)
-		print (file, list(reversed(sorted(prediction)))[0][1])
-	print ('test time (loading model, preprocessing, and classification):', time.time()-start, 'seconds')
+		print(file, list(reversed(sorted(prediction)))[0][1])
+	print('test time (loading model, preprocessing, and classification):', time.time()-start, 'seconds')
 
 else:
-	print ('Usage: bbnn\ audiotagger.py [train/classify]')
-'''
+	print('Usage: BottomUpBroadcastNetwork.py [train/classify]')
